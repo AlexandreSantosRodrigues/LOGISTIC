@@ -1,0 +1,206 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+sns.set_theme(style="whitegrid", context="notebook")
+
+caminho_dados = '/kaggle/input/datasets/alexandresanto/logistica/DataCoSupplyChainDataset.csv'
+
+
+try:
+    df = pd.read_csv(caminho_dados, sep=';', encoding='latin1', low_memory=False)
+    print(f"Dataset carregado com sucesso e sem avisos de memória!")
+    print(f"Linhas: {df.shape[0]} | Colunas: {df.shape[1]}")
+except Exception as e:
+    print(f"Erro ao carregar o dataset: {e}")
+
+
+produtos_vendas = df.groupby('Product Name')['Order Item Quantity'].sum().sort_values(ascending=False)
+
+top_5_melhores = produtos_vendas.head(5)
+top_5_piores = produtos_vendas.tail(5)
+
+fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+sns.barplot(x=top_5_melhores.values, y=top_5_melhores.index, ax=axes[0], hue=top_5_melhores.index, legend=False, palette="Greens_r")
+axes[0].set_title('Top 5 Produtos Mais Vendidos (Melhores)', fontsize=14, fontweight='bold')
+axes[0].set_xlabel('Quantidade Total Vendida')
+axes[0].set_ylabel('')
+
+sns.barplot(x=top_5_piores.values, y=top_5_piores.index, ax=axes[1], hue=top_5_piores.index, legend=False, palette="Reds_r")
+axes[1].set_title('Top 5 Produtos Menos Vendidos (Piores)', fontsize=14, fontweight='bold')
+axes[1].set_xlabel('Quantidade Total Vendida')
+axes[1].set_ylabel('')
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+dicionario_traducao = {
+    'Estados Unidos': 'Estados Unidos',
+    'Francia': 'França',
+    'MÃ©xico': 'México', 
+    'Alemania': 'Alemanha',
+    'Australia': 'Austrália',
+    'Brasil': 'Brasil',
+    'Reino Unido': 'Reino Unido',
+    'China': 'China',
+    'Italia': 'Itália',
+    'India': 'Índia'
+}
+df['Order Country PT'] = df['Order Country'].replace(dicionario_traducao)
+
+paises_vendas = df.groupby('Order Country PT')['Order Item Quantity'].sum().sort_values(ascending=False).head(10)
+
+paises_top10_nomes = paises_vendas.index
+tempo_top10 = df[df['Order Country PT'].isin(paises_top10_nomes)].groupby('Order Country PT')['Days for shipping (real)'].mean()
+
+df_plot = pd.DataFrame({
+    'Vendas (Qtd)': paises_vendas,
+    'Tempo de Entrega': tempo_top10
+}).reindex(paises_vendas.index) 
+
+fig, ax1 = plt.subplots(figsize=(14, 7))
+
+cor_barra = '#1f77b4'
+sns.barplot(x=df_plot.index, y=df_plot['Vendas (Qtd)'], color=cor_barra, alpha=0.8, ax=ax1)
+ax1.set_ylabel('Volume de Itens Comprados', color=cor_barra, fontsize=12, fontweight='bold')
+ax1.tick_params(axis='y', labelcolor=cor_barra)
+ax1.set_xlabel('País (Destino)', fontsize=12, fontweight='bold')
+plt.xticks(rotation=45, ha='right')
+
+ax2 = ax1.twinx()
+cor_linha = '#d62728'
+ax2.plot(df_plot.index, df_plot['Tempo de Entrega'], color=cor_linha, marker='o', linewidth=2.5, markersize=8)
+ax2.set_ylabel('Média de Tempo para Entrega Real (Dias)', color=cor_linha, fontsize=12, fontweight='bold')
+ax2.tick_params(axis='y', labelcolor=cor_linha)
+
+
+ax2.set_ylim(3.4, 3.6)
+
+plt.title('Top 10 Países Que Mais Compram x Tempo Médio de Entrega', fontsize=16, fontweight='bold')
+plt.tight_layout()
+plt.show()
+
+vendas_por_produto = df['Product Name'].value_counts()
+produtos_relevantes = vendas_por_produto[vendas_por_produto > 50].index
+
+df_relevantes = df[df['Product Name'].isin(produtos_relevantes)]
+
+entregas_rapidas = df_relevantes.groupby('Product Name')['Days for shipping (real)'].mean().sort_values(ascending=True).head(10)
+
+plt.figure(figsize=(12, 6))
+sns.barplot(x=entregas_rapidas.values, y=entregas_rapidas.index, hue=entregas_rapidas.index, legend=False, palette="coolwarm")
+plt.title('Top 10 Produtos com Entrega Mais Rápida', fontsize=14, fontweight='bold')
+plt.xlabel('Média de Tempo para Entrega Real (Em Dias)')
+plt.ylabel('')
+plt.tight_layout()
+plt.show()
+
+# --- Célula 5: Comparação Logística (Volume vs Tempo de Entrega) ---
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# 1. Identificar os 3 produtos mais e menos vendidos por quantidade
+produtos_vendas = df.groupby('Product Name')['Order Item Quantity'].sum().sort_values(ascending=False)
+top_3_mais_nomes = produtos_vendas.head(3).index
+top_3_menos_nomes = produtos_vendas.tail(3).index
+
+# 2. Filtrar o dataframe original apenas para esses produtos e calcular a média de dias de entrega
+tempo_mais = df[df['Product Name'].isin(top_3_mais_nomes)].groupby('Product Name')['Days for shipping (real)'].mean()
+tempo_menos = df[df['Product Name'].isin(top_3_menos_nomes)].groupby('Product Name')['Days for shipping (real)'].mean()
+
+# 3. Preparação dos dados para o gráfico (Data Wrangling)
+# Transformando os resultados em DataFrames para facilitar a plotagem com o Seaborn
+df_mais = tempo_mais.reset_index()
+df_mais['Grupo'] = 'Top 3 Mais Vendidos'
+
+df_menos = tempo_menos.reset_index()
+df_menos['Grupo'] = 'Top 3 Menos Vendidos'
+
+# Concatenando (unindo) os dois dataframes
+df_comparacao = pd.concat([df_mais, df_menos])
+
+# 4. Visualização Gráfica
+plt.figure(figsize=(12, 6))
+
+# Usamos um barplot para comparar a média de dias. O parâmetro 'hue' divide pelas categorias de venda.
+ax = sns.barplot(
+    data=df_comparacao, 
+    x='Days for shipping (real)', 
+    y='Product Name', 
+    hue='Grupo', 
+    dodge=False, # Impede que as barras fiquem espremidas na mesma linha
+    palette=['#2ca02c', '#d62728'] # Verde para mais vendidos, vermelho para menos
+)
+
+# Configurações estéticas do gráfico
+plt.title('Tempo de Entrega: Top 3 Mais Vendidos vs Top 3 Menos Vendidos', fontsize=14, fontweight='bold')
+plt.xlabel('Média de Tempo para Entrega Real (Em Dias)', fontsize=12)
+plt.ylabel('Nome do Produto', fontsize=12)
+plt.xlim(0, 5) # Padronizando o eixo X até 5 dias para melhor percepção da escala
+
+# Adicionando os valores numéricos nas barras para precisão (Melhor Prática)
+for container in ax.containers:
+    ax.bar_label(container, fmt='%.2f dias', padding=3)
+
+plt.tight_layout()
+plt.show()
+
+# Print para console do Kaggle
+print(f"Média de Entrega (Mais Vendidos): {tempo_mais.mean():.2f} dias")
+print(f"Média de Entrega (Menos Vendidos): {tempo_menos.mean():.2f} dias")
+
+# --- Célula 6: Impacto Financeiro (Desconto vs Margem de Lucro) ---
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# 1. Tratamento (Data Wrangling): Garantir que as colunas de taxas sejam numéricas
+# Usamos 'coerce' para transformar qualquer erro de digitação em nulo (NaN) e não quebrar o código
+df['Order Item Discount Rate'] = pd.to_numeric(df['Order Item Discount Rate'], errors='coerce')
+df['Order Item Profit Ratio'] = pd.to_numeric(df['Order Item Profit Ratio'], errors='coerce')
+
+# 2. Criar Faixas de Desconto (Binnig/Discretização)
+# Isso facilita a análise do time de negócios (ex: "Desconto de 5 a 10%")
+faixas = [-0.01, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30]
+rotulos = ['0-5%', '6-10%', '11-15%', '16-20%', '21-25%', '26-30%']
+df['Faixa de Desconto'] = pd.cut(df['Order Item Discount Rate'], bins=faixas, labels=rotulos)
+
+# 3. Calculando as médias de margem de lucro por faixa de desconto
+lucro_por_faixa = df.groupby('Faixa de Desconto')['Order Item Profit Ratio'].mean() * 100
+
+# 4. Visualização Gráfica Avançada
+fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+# Gráfico 1: A Média de Lucro (Barplot simples e direto)
+sns.barplot(x=lucro_por_faixa.index, y=lucro_por_faixa.values, ax=axes[0], hue=lucro_por_faixa.index, palette="viridis", legend=False)
+axes[0].set_title('Margem Média de Lucro por Faixa de Desconto', fontsize=14, fontweight='bold')
+axes[0].set_xlabel('Faixa de Desconto Aplicado', fontsize=12)
+axes[0].set_ylabel('Margem de Lucro Média (%)', fontsize=12)
+
+# Adicionando os valores numéricos em cima das barras para precisão
+for container in axes[0].containers:
+    axes[0].bar_label(container, fmt='%.1f%%', padding=3)
+
+# Gráfico 2: A Distribuição e Variância do Lucro (Boxplot)
+# O Boxplot mostra a variação total, incluindo perdas extremas (outliers negativos)
+sns.boxplot(data=df, x='Faixa de Desconto', y='Order Item Profit Ratio', ax=axes[1], hue='Faixa de Desconto', palette="viridis", legend=False)
+axes[1].set_title('Distribuição Total da Margem de Lucro (Boxplot)', fontsize=14, fontweight='bold')
+axes[1].set_xlabel('Faixa de Desconto Aplicado', fontsize=12)
+axes[1].set_ylabel('Ratio de Lucro (1.0 = 100%)', fontsize=12)
+axes[1].axhline(0, color='red', linestyle='--', linewidth=1.5, label='Ponto de Prejuízo (Zero Lucro)')
+axes[1].legend()
+
+plt.tight_layout()
+plt.show()
+
+# 5. Imprimir a Correlação Estatística Exata
+correlacao = df['Order Item Discount Rate'].corr(df['Order Item Profit Ratio'])
+print(f"Coeficiente de Correlação (Desconto vs Lucro): {correlacao:.4f}")
+print("Nota: Valores muito próximos de 0 indicam que não há impacto negativo direto do desconto na margem!")
+
+plt.tight_layout()
+plt.show()
